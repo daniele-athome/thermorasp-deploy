@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# First time setup script for Raspberry PI system for a smart thermostat
+
+cd "$(dirname "$0")"
+
+sudo_path=`which sudo`
+
+install_sudo() {
+    echo "You need sudo to run this script."
+    exit 1
+}
+
+check_prereqs() {
+    if [ -z "${sudo_path}" ]; then
+        install_sudo
+    fi
+}
+
+# check prerequisites
+check_prereqs
+
+# load configuration
+set -a
+. local.properties
+set +a
+
+WIFI_DEVICE=wlan0
+
+set -e
+
+echo "Applying system modifications to Raspbian"
+
+# overlay and modules for 1-Wire driver
+sudo tools/editconf.py ${SD_PATH_BOOT}/config.txt dtoverlay=w1-gpio
+grep "w1-gpio" ${SD_PATH_ROOT}/etc/modules &>/dev/null || sudo bash -c "echo \"w1-gpio\" >>${SD_PATH_ROOT}/etc/modules"
+grep "w1-therm" ${SD_PATH_ROOT}/etc/modules &>/dev/null || sudo bash -c "echo \"w1-therm\" >>${SD_PATH_ROOT}/etc/modules"
+
+echo "Configuring network connection"
+sudo grep "network=" ${SD_PATH_ROOT}/etc/wpa_supplicant/wpa_supplicant.conf &>/dev/null ||
+sudo bash -c "cat <<EOF >>${SD_PATH_ROOT}/etc/wpa_supplicant/wpa_supplicant.conf
+network={
+    ssid=\"${WIFI_SSID}\"
+    psk=\"${WIFI_WPA2PSK}\"
+}
+EOF
+"
+
+grep "${WIFI_DEVICE}" ${SD_PATH_ROOT}/etc/dhcpcd.conf &>/dev/null || sudo bash -c "cat <<EOF >>${SD_PATH_ROOT}/etc/dhcpcd.conf
+interface ${WIFI_DEVICE}
+static ip_address=${NETWORK_IPADDR}
+static routers=${NETWORK_GATEWAY}
+static domain_name_servers=${NETWORK_DNS}
+EOF
+"
+
+echo "Setting hostname to ${DEV_HOSTNAME}"
+sudo bash -c "echo ${DEV_HOSTNAME} >${SD_PATH_ROOT}/etc/hostname"
+sudo tools/editconf.py ${SD_PATH_ROOT}/etc/hosts -s 127.0.1.1=${DEV_HOSTNAME}
+
+echo "Enabling SSH"
+sudo touch ${SD_PATH_BOOT}/ssh
+
+echo "Authorizing SSH key for access"
+sudo mkdir -p ${SD_PATH_ROOT}/home/pi/.ssh
+sudo chmod 0700 ${SD_PATH_ROOT}/home/pi/.ssh
+sudo cp ${SSH_PUBLICKEY} ${SD_PATH_ROOT}/home/pi/.ssh/authorized_keys
+sudo chown -R 1000:1000 ${SD_PATH_ROOT}/home/pi/.ssh

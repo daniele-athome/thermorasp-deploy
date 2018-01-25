@@ -1,0 +1,18 @@
+# Smart Thermostat first setup configuration
+
+# SD card mount points (must be mounted already)
+SD_PATH_ROOT=/path/to/rootfs
+SD_PATH_BOOT=/path/to/boot
+
+# WiFi configuration
+WIFI_SSID=ssid
+WIFI_WPA2PSK=passphrase
+
+# Network configuration
+DEV_HOSTNAME=thermostat
+NETWORK_IPADDR=192.168.0.250/24
+NETWORK_GATEWAY=192.168.0.1
+NETWORK_DNS=192.168.0.1
+
+# SSH configuration
+SSH_PUBLICKEY=~/.ssh/id_rsa.pub
