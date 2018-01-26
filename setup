@@ -65,3 +65,6 @@ sudo mkdir -p ${SD_PATH_ROOT}/home/pi/.ssh
 sudo chmod 0700 ${SD_PATH_ROOT}/home/pi/.ssh
 sudo cp ${SSH_PUBLICKEY} ${SD_PATH_ROOT}/home/pi/.ssh/authorized_keys
 sudo chown -R 1000:1000 ${SD_PATH_ROOT}/home/pi/.ssh
+
+echo "Copying updater to cron job list"
+sudo cp updater.sh ${SD_PATH_ROOT}/etc/cron.hourly/thermostat-updater
