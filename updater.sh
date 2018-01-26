@@ -25,6 +25,8 @@ set -a
 . local.properties
 set +a
 
+BRANCH=master
+
 set -e
 
 if [ $(id -u) = "0" ]; then
@@ -32,22 +34,31 @@ if [ $(id -u) = "0" ]; then
     apt-get -qq update
     apt-get -qqy install git python3-pip
 
-    # TODO install systemd unit and reload-daemon
+    # install systemd unit and reload daemon
+    cp daemon-systemd.service /usr/lib/systemd/user/thermostatd.service
+    systemctl daemon-reload
 
     # re-run as user
     sudo -u pi $0
 else:
     cd /home/pi
-    # clone software
-    [[ ! -d daemon ]] && git clone https://daniele@git.casaricci.it/thermostat-daemon.git daemon
+
+    # install software
+    [[ ! -d daemon ]] && git clone -b ${BRANCH} https://daniele@git.casaricci.it/thermostat-daemon.git daemon
     cd daemon
+    git pull
     sudo pip3 install -r requirements.txt
     ./setup.py build
     sudo ./setup.py install
+
     # create env
     sudo mkdir -p /var/lib/thermostat
     sudo chown -R pi:pi /var/lib/thermostat
+
     # init/upgrade database
     ./migrate generate
     ./migrate upgrade
+
+    # TODO restart daemon only if changed
+    systemd restart thermostatd
 fi
