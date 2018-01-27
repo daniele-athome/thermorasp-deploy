@@ -47,18 +47,29 @@ else:
     [[ ! -d daemon ]] && git clone -b ${BRANCH} https://daniele@git.casaricci.it/thermostat-daemon.git daemon
     cd daemon
     git pull
-    sudo pip3 install -r requirements.txt
-    ./setup.py build
-    sudo ./setup.py install
 
-    # create env
-    sudo mkdir -p /var/lib/thermostat
-    sudo chown -R pi:pi /var/lib/thermostat
+    COMMIT=$(git rev-parse HEAD)
+    if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
+        sudo pip3 install -r requirements.txt
+        ./setup.py build
+        sudo ./setup.py install
 
-    # init/upgrade database
-    ./migrate generate
-    ./migrate upgrade
+        # create env
+        sudo mkdir -p /var/lib/thermostat
+        sudo chown -R pi:pi /var/lib/thermostat
 
-    # TODO restart daemon only if changed
-    systemd restart thermostatd
+        # create configuration
+        cp thermostat.conf.dist /etc/thermostat.conf
+
+        # init/upgrade database
+        # FIXME this might create git conflicts
+        tools/editconf.py alembic.ini config_file=/etc/thermostat.conf
+        ./migrate generate
+        ./migrate upgrade
+
+        # restart daemon and store version
+        systemd restart thermostatd
+        echo ${COMMIT} >.version
+    fi
+
 fi
