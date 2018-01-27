@@ -16,3 +16,6 @@ NETWORK_DNS=192.168.0.1
 
 # SSH configuration
 SSH_PUBLICKEY=~/.ssh/id_rsa.pub
+
+# Hardware configuration
+TEMPERATURE_GPIO_PIN=24
