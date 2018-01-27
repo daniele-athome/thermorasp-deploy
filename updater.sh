@@ -20,11 +20,6 @@ check_prereqs() {
 # check prerequisites
 check_prereqs
 
-# load configuration
-set -a
-. local.properties
-set +a
-
 BRANCH=master
 
 set -e
@@ -33,10 +28,6 @@ if [ $(id -u) = "0" ]; then
     # install some packages
     apt-get -qq update
     apt-get -qqy install git python3-pip
-
-    # install systemd unit and reload daemon
-    cp daemon-systemd.service /usr/lib/systemd/user/thermostatd.service
-    systemctl daemon-reload
 
     # re-run as user
     sudo -u pi $0
@@ -50,6 +41,10 @@ else:
 
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
+        # install systemd unit and reload daemon
+        sudo cp daemon-systemd.service /usr/lib/systemd/user/thermostatd.service
+        sudo systemctl daemon-reload
+
         sudo pip3 install -r requirements.txt
         ./setup.py build
         sudo ./setup.py install
