@@ -31,7 +31,8 @@ if [ $(id -u) = "0" ]; then
 
     # re-run as user
     sudo -u pi $0
-else:
+
+else
     cd /home/pi
 
     # install software
@@ -42,7 +43,7 @@ else:
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
         # install systemd unit and reload daemon
-        sudo cp daemon-systemd.service /usr/lib/systemd/user/thermostatd.service
+        sudo cp daemon-systemd.service /etc/systemd/system/thermostatd.service
         sudo systemctl daemon-reload
 
         sudo pip3 install -r requirements.txt
@@ -54,16 +55,16 @@ else:
         sudo chown -R pi:pi /var/lib/thermostat
 
         # create configuration
-        cp thermostat.conf.dist /etc/thermostat.conf
+        sudo cp thermostat.conf.dist /etc/thermostat.conf
 
         # init/upgrade database
         # FIXME this might create git conflicts
-        tools/editconf.py alembic.ini config_file=/etc/thermostat.conf
+        sed -i 's/^config_file = \(.*\)$/config_file = \/etc\/thermostat.conf/' alembic.ini
         ./migrate generate
         ./migrate upgrade
 
         # restart daemon and store version
-        systemd restart thermostatd
+        sudo systemctl restart thermostatd
         echo ${COMMIT} >.version
     fi
 
