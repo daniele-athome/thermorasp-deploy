@@ -28,6 +28,7 @@ if [ $(id -u) = "0" ]; then
     # install some packages
     apt-get -qq update
     apt-get -qqy install git python3-pip
+    apt-get -qq clean
 
     # re-run as user
     sudo -u pi $0
