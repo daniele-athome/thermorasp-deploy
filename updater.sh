@@ -47,7 +47,7 @@ else
         sudo cp daemon-systemd.service /etc/systemd/system/thermostatd.service
         sudo systemctl daemon-reload
 
-        sudo pip3 install -r requirements.txt
+        sudo pip3 install -r requirements.txt -r requirements-prod.txt
         ./setup.py build
         sudo ./setup.py install
 
