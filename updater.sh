@@ -27,8 +27,34 @@ set -e
 if [ $(id -u) = "0" ]; then
     # install some packages
     apt-get -qq update
-    apt-get -qqy install git python3-pip
+    apt-get -qqy install git python3-pip nginx-light
     apt-get -qq clean
+
+    # we need npm for webui
+    if ! command -v npm &>/dev/null; then
+        curl "https://nodejs.org/dist/v9.5.0/node-v9.5.0-linux-armv6l.tar.gz" >/tmp/nodejs.tar.gz
+        tar -C /tmp -xzf /tmp/nodejs.tar.gz
+        cp -R /tmp/node-v*/bin /tmp/node-v*/include /tmp/node-v*/lib /tmp/node-v*/share /usr/local
+        rm -fR /tmp/nodejs.tar.gz /tmp/node-v*
+    fi
+
+    # update nginx
+    cat <<EOF >/etc/nginx/sites-available/default
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name  localhost;
+
+    charset utf-8;
+    root /home/pi/webui/app;
+
+    location /api/ {
+        proxy_pass  http://localhost:7475/;
+    }
+}
+EOF
+
+    systemctl reload nginx
 
     # re-run as user
     sudo -u pi $0
@@ -66,6 +92,18 @@ else
 
         # restart daemon and store version
         sudo systemctl restart thermostatd
+        echo ${COMMIT} >.version
+    fi
+
+    cd ..
+
+    [[ ! -d webui ]] && git clone -b ${BRANCH} https://daniele@git.casaricci.it/thermostat-webui.git webui
+    cd webui
+    git pull
+
+    COMMIT=$(git rev-parse HEAD)
+    if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
+        npm install
         echo ${COMMIT} >.version
     fi
 
