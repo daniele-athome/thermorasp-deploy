@@ -51,6 +51,13 @@ static domain_name_servers=${NETWORK_DNS}
 EOF
 "
 
+sudo bash -c "cat <<EOF >/etc/network/interfaces.d/wlan0-auto.conf
+allow-hotplug wlan0
+iface wlan0 inet manual
+    wpa-roam /etc/wpa_supplicant/wpa_supplicant.conf
+EOF
+"
+
 echo "Setting hostname to ${DEV_HOSTNAME}"
 sudo bash -c "echo ${DEV_HOSTNAME} >${SD_PATH_ROOT}/etc/hostname"
 sudo tools/editconf.py ${SD_PATH_ROOT}/etc/hosts -s 127.0.1.1=${DEV_HOSTNAME}
