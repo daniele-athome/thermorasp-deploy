@@ -63,7 +63,7 @@ else
     cd /home/pi
 
     # install software
-    [[ ! -d daemon ]] && git clone -b ${BRANCH} https://daniele@git.casaricci.it/thermostat-daemon.git daemon
+    [[ ! -d daemon ]] && git clone -b ${BRANCH} https://github.com/daniele-athome/thermorasp-daemon.git daemon
     cd daemon
     git pull
 
@@ -97,7 +97,7 @@ else
 
     cd ..
 
-    [[ ! -d webui ]] && git clone -b ${BRANCH} https://daniele@git.casaricci.it/thermostat-webui.git webui
+    [[ ! -d webui ]] && git clone -b ${BRANCH} https://github.com/daniele-athome/thermorasp-webui.git webui
     cd webui
     git pull
 
