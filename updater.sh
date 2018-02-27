@@ -48,6 +48,12 @@ server {
     charset utf-8;
     root /home/pi/webui/app;
 
+    gzip on;
+    gzip_types text/plain text/javascript text/css application/javascript application/json;
+    gzip_min_length 256;
+	gzip_comp_level 6;
+	gzip_buffers 16 8k;
+
     location /api/ {
         proxy_pass  http://localhost:7475/;
     }
