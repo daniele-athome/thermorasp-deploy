@@ -32,7 +32,9 @@ $ sudo /etc/cron.daily/thermostat-updater
 ```
 
 The thermostat software should now be up and running in the background.
-You can check its status via systemctl:
+
+## Access web interface and control
+You can check the thermostat daemon status via systemctl:
 
 ```
 $ systemctl status thermostatd
@@ -51,3 +53,6 @@ followed by `.local`:
 ```
 http://thermostat.local/
 ```
+
+Please refer to the [web UI repository](//github.com/daniele-athome/thermorasp-webui) for further
+information on its configuration capabilities.
