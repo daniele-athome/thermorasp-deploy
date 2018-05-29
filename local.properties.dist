@@ -8,14 +8,18 @@ SD_PATH_BOOT=/path/to/boot
 WIFI_SSID=ssid
 WIFI_WPA2PSK=passphrase
 
-# Network configuration
+# Device hostname. Can be referred to with the .local suffix in mDNS networks
 DEV_HOSTNAME=thermostat
+
+# Network configuration
 NETWORK_IPADDR=192.168.0.250/24
 NETWORK_GATEWAY=192.168.0.1
 NETWORK_DNS=192.168.0.1
 
 # SSH configuration
+# Public key for SSH access
 SSH_PUBLICKEY=~/.ssh/id_rsa.pub
 
 # Hardware configuration
+# GPIO pin where the temperature sensor is connected
 TEMPERATURE_GPIO_PIN=24
