@@ -5,6 +5,7 @@
 cd "$(dirname "$0")"
 
 sudo_path=`which sudo`
+nodejs_version="v10.14.2"
 
 install_sudo() {
     echo "You need sudo to run this script."
@@ -17,6 +18,11 @@ check_prereqs() {
     fi
 }
 
+check_nodejs() {
+    command -v npm &>/dev/null &&
+      [[ "$(node -v)" == "${nodejs_version}" ]]
+}
+
 # check prerequisites
 check_prereqs
 
@@ -27,12 +33,12 @@ set -e
 if [ $(id -u) = "0" ]; then
     # install some packages
     apt-get -qq update
-    apt-get -qqy install git python3-pip nginx-light
+    apt-get -qqy install git python3-pip nginx-light mosquitto
     apt-get -qq clean
 
     # we need npm for webui
-    if ! command -v npm &>/dev/null; then
-        curl "https://nodejs.org/dist/v9.5.0/node-v9.5.0-linux-armv6l.tar.gz" >/tmp/nodejs.tar.gz
+    if ! check_nodejs; then
+        curl "https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-armv6l.tar.gz" >/tmp/nodejs.tar.gz
         tar -C /tmp -xzf /tmp/nodejs.tar.gz
         cp -R /tmp/node-v*/bin /tmp/node-v*/include /tmp/node-v*/lib /tmp/node-v*/share /usr/local
         rm -fR /tmp/nodejs.tar.gz /tmp/node-v*
@@ -46,7 +52,7 @@ server {
     server_name  localhost;
 
     charset utf-8;
-    root /home/pi/webui/app;
+    root /home/pi/webui/dist;
 
     gzip on;
     gzip_types text/plain text/javascript text/css application/javascript application/json;
@@ -54,13 +60,29 @@ server {
     gzip_comp_level 6;
     gzip_buffers 16 8k;
 
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
     location /api/ {
         proxy_pass  http://localhost:7475/;
+    }
+
+    location /mqtt/ {
+        proxy_pass  http://localhost:9001/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
     }
 }
 EOF
 
     systemctl reload nginx
+
+    # update mosquitto
+    # TODO...
+
+    systemctl reload mosquitto
 
     # re-run as user
     sudo -u pi $0
@@ -109,7 +131,7 @@ else
 
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
-        npm install
+        ng build --prod
         echo ${COMMIT} >.version
     fi
 
