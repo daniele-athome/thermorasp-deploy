@@ -13,7 +13,7 @@ install_sudo() {
 }
 
 check_prereqs() {
-    if [ -z "${sudo_path}" ]; then
+    if [[ -z "${sudo_path}" ]]; then
         install_sudo
     fi
 }
@@ -23,25 +23,39 @@ check_nodejs() {
       [[ "$(node -v)" == "${nodejs_version}" ]]
 }
 
+get_node_arch() {
+    current_arch="$(arch)"
+    case "${current_arch}" in
+        x86_64)
+            echo "x64"
+            ;;
+        *)
+            echo "${current_arch}"
+    esac
+}
+
 # check prerequisites
 check_prereqs
 
-BRANCH=master
+BRANCH=mqtt
+MAINUSER=$(getent passwd 1000 | cut -d: -f1)
 
 set -e
 
-if [ $(id -u) = "0" ]; then
+if [[ $(id -u) = "0" ]]; then
     # install some packages
     apt-get -qq update
-    apt-get -qqy install git python3-pip nginx-light mosquitto
+    apt-get -qqy install git python3-pip nginx-light mosquitto curl
     apt-get -qq clean
 
     # we need npm for webui
     if ! check_nodejs; then
-        curl "https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-armv6l.tar.gz" >/tmp/nodejs.tar.gz
+        curl "https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-$(get_node_arch).tar.gz" >/tmp/nodejs.tar.gz
         tar -C /tmp -xzf /tmp/nodejs.tar.gz
         cp -R /tmp/node-v*/bin /tmp/node-v*/include /tmp/node-v*/lib /tmp/node-v*/share /usr/local
         rm -fR /tmp/nodejs.tar.gz /tmp/node-v*
+
+        npm install -g @angular/cli
     fi
 
     # update nginx
@@ -52,7 +66,7 @@ server {
     server_name  localhost;
 
     charset utf-8;
-    root /home/pi/webui/dist;
+    root /home/${MAINUSER}/webui/;
 
     gzip on;
     gzip_types text/plain text/javascript text/css application/javascript application/json;
@@ -61,7 +75,7 @@ server {
     gzip_buffers 16 8k;
 
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files \$uri \$uri/ /index.html;
     }
 
     location /api/ {
@@ -71,7 +85,7 @@ server {
     location /mqtt/ {
         proxy_pass  http://localhost:9001/;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "Upgrade";
     }
 }
@@ -80,15 +94,19 @@ EOF
     systemctl reload nginx
 
     # update mosquitto
-    # TODO...
+    cat <<EOF >/etc/mosquitto/conf.d/thermostat.conf
+listener 1883 127.0.0.1
+listener 9001 127.0.0.1
+protocol websockets
+EOF
 
-    systemctl reload mosquitto
+    systemctl restart mosquitto
 
     # re-run as user
-    sudo -u pi $0
+    sudo -u "${MAINUSER}" $0
 
 else
-    cd /home/pi
+    cd "/home/${MAINUSER}"
 
     # install software
     [[ ! -d daemon ]] && git clone -b ${BRANCH} https://github.com/daniele-athome/thermorasp-daemon.git daemon
@@ -98,7 +116,7 @@ else
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
         # install systemd unit and reload daemon
-        sudo cp daemon-systemd.service /etc/systemd/system/thermostatd.service
+        sed  "s/@@MAINUSER@@/${MAINUSER}/g" daemon-systemd.service | sudo tee /etc/systemd/system/thermostatd.service >/dev/null
         sudo systemctl daemon-reload
 
         sudo pip3 install -r requirements.txt -r requirements-prod.txt
@@ -107,7 +125,7 @@ else
 
         # create env
         sudo mkdir -p /var/lib/thermostat
-        sudo chown -R pi:pi /var/lib/thermostat
+        sudo chown -R "${MAINUSER}:${MAINUSER}" /var/lib/thermostat
 
         # create configuration
         sudo cp thermostat.conf.dist /etc/thermostat.conf
@@ -125,13 +143,14 @@ else
 
     cd ..
 
-    [[ ! -d webui ]] && git clone -b ${BRANCH} https://github.com/daniele-athome/thermorasp-webui.git webui
+    [[ ! -d webui ]] && git clone -b ${BRANCH}-dist https://github.com/daniele-athome/thermorasp-webui.git webui
     cd webui
     git pull
 
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
-        ng build --prod
+        #npm install
+        #ng build --prod
         echo ${COMMIT} >.version
     fi
 
