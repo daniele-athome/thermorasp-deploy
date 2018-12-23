@@ -96,6 +96,7 @@ else
     [[ ! -d daemon ]] && git clone -b ${BRANCH} https://github.com/daniele-athome/thermorasp-daemon.git daemon
     cd daemon
     git pull
+    git checkout ${BRANCH}
 
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
@@ -130,6 +131,7 @@ else
     [[ ! -d webui ]] && git clone -b ${BRANCH}-dist https://github.com/daniele-athome/thermorasp-webui.git webui
     cd webui
     git pull
+    git checkout ${BRANCH}-dist
 
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
