@@ -5,7 +5,6 @@
 cd "$(dirname "$0")"
 
 sudo_path=`which sudo`
-nodejs_version="v10.14.2"
 
 install_sudo() {
     echo "You need sudo to run this script."
@@ -18,20 +17,8 @@ check_prereqs() {
     fi
 }
 
-check_nodejs() {
-    command -v npm &>/dev/null &&
-      [[ "$(node -v)" == "${nodejs_version}" ]]
-}
-
-get_node_arch() {
-    current_arch="$(arch)"
-    case "${current_arch}" in
-        x86_64)
-            echo "x64"
-            ;;
-        *)
-            echo "${current_arch}"
-    esac
+self_chksum() {
+    sha1sum $0 | cut -d' ' -f1
 }
 
 # check prerequisites
@@ -39,27 +26,19 @@ check_prereqs
 
 BRANCH=mqtt
 MAINUSER=$(getent passwd 1000 | cut -d: -f1)
+CHKFILE=/tmp/thermostat-updater.chk
 
 set -e
 
 if [[ $(id -u) = "0" ]]; then
-    # install some packages
-    apt-get -qq update
-    apt-get -qqy install git python3-pip nginx-light mosquitto curl
-    apt-get -qq clean
+    if [[ ! -a "${CHKFILE}" ]] || [[ "$(cat ${CHKFILE})" != "$(self_chksum)" ]]; then
+        # install some packages
+        apt-get -qq update
+        apt-get -qqy install git python3-pip nginx-light mosquitto curl
+        apt-get -qq clean
 
-    # we need npm for webui
-    if ! check_nodejs; then
-        curl "https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-$(get_node_arch).tar.gz" >/tmp/nodejs.tar.gz
-        tar -C /tmp -xzf /tmp/nodejs.tar.gz
-        cp -R /tmp/node-v*/bin /tmp/node-v*/include /tmp/node-v*/lib /tmp/node-v*/share /usr/local
-        rm -fR /tmp/nodejs.tar.gz /tmp/node-v*
-
-        npm install -g @angular/cli
-    fi
-
-    # update nginx
-    cat <<EOF >/etc/nginx/sites-available/default
+        # update nginx
+        cat <<EOF >/etc/nginx/sites-available/default
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -91,16 +70,21 @@ server {
 }
 EOF
 
-    systemctl reload nginx
+        systemctl reload nginx
 
-    # update mosquitto
-    cat <<EOF >/etc/mosquitto/conf.d/thermostat.conf
+        # update mosquitto
+        cat <<EOF >/etc/mosquitto/conf.d/thermostat.conf
 listener 1883 127.0.0.1
 listener 9001 127.0.0.1
 protocol websockets
 EOF
 
-    systemctl restart mosquitto
+        systemctl restart mosquitto
+        sleep 1
+        systemctl restart thermostatd || true
+
+        self_chksum >"${CHKFILE}"
+    fi
 
     # re-run as user
     sudo -u "${MAINUSER}" $0
@@ -149,8 +133,6 @@ else
 
     COMMIT=$(git rev-parse HEAD)
     if [[ ! -a .version ]] || [[ "$(cat .version)" != "${COMMIT}" ]]; then
-        #npm install
-        #ng build --prod
         echo ${COMMIT} >.version
     fi
 
