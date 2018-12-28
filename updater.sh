@@ -74,7 +74,7 @@ EOF
 
         # update mosquitto
         cat <<EOF >/etc/mosquitto/conf.d/thermostat.conf
-listener 1883 127.0.0.1
+listener 1883 0.0.0.0
 listener 9001 127.0.0.1
 protocol websockets
 EOF
