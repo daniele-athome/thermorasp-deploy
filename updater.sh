@@ -37,6 +37,25 @@ if [[ $(id -u) = "0" ]]; then
         apt-get -qqy install git python3-pip nginx-light mosquitto curl
         apt-get -qq clean
 
+        # update mDNS service
+        cat <<EOF >/etc/avahi/services/thermostat.service
+<?xml version="1.0" standalone='no'?><!--*-nxml-*-->
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+
+<service-group>
+
+  <name replace-wildcards="no">Thermorasp</name>
+
+  <service>
+    <type>_http._tcp</type>
+    <port>80</port>
+  </service>
+
+</service-group>
+EOF
+
+        systemctl reload avahi-daemon
+
         # update nginx
         cat <<EOF >/etc/nginx/sites-available/default
 server {
