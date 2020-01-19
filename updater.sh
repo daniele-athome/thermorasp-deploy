@@ -24,7 +24,7 @@ self_chksum() {
 # check prerequisites
 check_prereqs
 
-BRANCH=mqtt
+BRANCH=master
 MAINUSER=$(getent passwd 1000 | cut -d: -f1)
 CHKFILE=/tmp/thermostat-updater.chk
 
